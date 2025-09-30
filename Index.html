@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker de Metas de Faturamento - Versão Final</title>
+    <style>
+        /* Estilos Base (Mobile-First) */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 100%;
+            margin: auto;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 1.5em;
+            color: #1a73e8;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        h2 {
+            font-size: 1.2em;
+            color: #1a73e8;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+        /* Boxes de Resumo */
+        .summary-boxes {
+            display: flex;
+            flex-direction: column; 
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .box {
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .box h3 { margin-top: 0; font-size: 0.9em; color: #1a73e8; }
+        .box p { font-size: 1.5em; font-weight: bold; margin: 5px 0; }
+        .box.meta { background-color: #e8f0fe; }
+        .box.faturado { background-color: #e6fcf5; }
+        .box.restante { background-color: #fce8e6; }
+
+        /* Formulário */
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 3px; font-weight: bold; font-size: 0.9em;}
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1em;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .variable-cost-section button {
+            background-color: #1a73e8; /* Cor azul para destacar o botão de custo variável */
+        }
+        /* Calendário */
+        .month-view {
+            margin-top: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .month-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px 0;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            font-size: 0.7em;
+        }
+        .day-cell {
+            padding: 5px;
+            border: 1px solid #eee;
+            background-color: #fff;
+            min-height: 70px;
+            cursor: pointer;
+            border-radius: 4px;
+            position: relative;
+        }
+        .day-cell.passed { background-color: #f0f0f0; } 
+        .day-num {
+            font-size: 1em;
+            font-weight: bold;
+            display: block;
+            color: #333;
+        }
+        .faturamento-liquido, .meta-sugerida {
+            font-size: 0.7em;
+            display: block;
+        }
+        .faturamento-liquido { color: green; }
+        .meta-sugerida { color: #cc8400; font-weight: bold; }
+        .day-cell.cut-day {
+            background-color: #ffcccc; 
+            color: #999;
+        }
+        .weekend { color: #999; }
+        .cut-day-toggle {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.7em;
+            z-index: 10;
+        }
+        .fixed-cost-section {
+            padding: 10px;
+            margin-top: 15px;
+            background-color: #ffecc6;
+            border-radius: 4px;
+            border-left: 5px solid #ff9800;
+            font-size: 0.9em;
+        }
+        .variable-cost-section {
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #ccf2ff; 
+            border-radius: 4px;
+            border-left: 5px solid #1a73e8;
+            font-size: 0.9em;
+        }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 20% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-btn { color: #aaa; float: right; font-size: 24px; font-weight: bold; }
+
+        /* Media Query para Telas Maiores (Ex: Tablets/Desktop) */
+        @media (min-width: 600px) {
+            .container { padding: 20px; }
+            h1 { font-size: 2em; }
+            .summary-boxes { flex-direction: row; }
+            .box { flex: 1; }
+            .box p { font-size: 2em; }
+            .day-cell { min-height: 90px; }
+            .day-header { font-size: 0.9em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Tracker de Metas de Faturamento</h1>
+        <p style="text-align: center; font-size: 0.9em;">Período: 01 de out/2025 → 01 de jan/2026</p>
+
+        <h2>Configuração da Meta Global</h2>
+        <div class="form-group">
+            <label for="totalGoal">Meta Líquida Total (O lucro final que você quer ter):</label>
+            <input type="number" id="totalGoal" value="50000" min="0" step="1000">
+        </div>
+        
+        <h2>Custos Fixos Mensais</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 1 1 45%;">
+                <label for="costOct">Outubro 2025:</label>
+                <input type="number" id="costOct" value="1500" min="0" step="100" onchange="updateGoal()">
+            </div>
+            <div class="form-group" style="flex: 1 1 45%;">
+                <label for="costNov">Novembro 2025:</label>
+                <input type="number" id="costNov" value="1600" min="0" step="100" onchange="updateGoal()">
+            </div>
+            <div class="form-group" style="flex: 1 1 45%;">
+                <label for="costDec">Dezembro 2025:</label>
+                <input type="number" id="costDec" value="2000" min="0" step="100" onchange="updateGoal()">
+            </div>
+            <div class="form-group" style="flex: 1 1 45%;">
+                <label for="costJan">Janeiro 2026 (parcial):</label>
+                <input type="number" id="costJan" value="500" min="0" step="100" onchange="updateGoal()">
+            </div>
+        </div>
+
+        <button onclick="updateGoal()">Atualizar Metas e Recalcular</button>
+
+        <h2>Resumo do Progresso</h2>
+        <div class="summary-boxes">
+            <div class="box meta">
+                <h3>Meta Líquida Total</h3>
+                <p id="displayAdjustedGoal">R$ 50.000,00</p>
+            </div>
+            <div class="box faturado">
+                <h3>Faturado Total</h3>
+                <p id="displayFaturado">R$ 0,00</p>
+            </div>
+            <div class="box restante">
+                <h3>Restante para Bater a Meta</h3>
+                <p id="displayRestante">R$ 50.000,00</p>
+            </div>
+        </div>
+
+        <div id="calendarContainer">
+            </div>
+
+        <div id="faturamentoModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+                <h2>Faturamento Diário</h2>
+                <p>Dia: <strong id="modalDateDisplay"></strong></p>
+                <div class="form-group">
+                    <label for="faturamentoInput">Faturamento Bruto (R$):</label>
+                    <input type="number" id="faturamentoInput" value="" min="0" step="0.01">
+                </div>
+                <button onclick="saveFaturamento()">Salvar e Recalcular</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Constantes e Variáveis Globais ---
+        // CHAVE ATUALIZADA (v5) devido à mudança na estrutura de dados dos custos
+        const LS_DATA_KEY = 'metaTrackerData_v5'; 
+        const LS_GOAL_KEY = 'metaTrackerGoal_v5';
+        const LS_COSTS_KEY = 'metaTrackerCosts_v5';
+
+        const startDate = new Date('2025-10-01T00:00:00');
+        const endDate = new Date('2026-01-01T00:00:00');
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        let totalGoal = 0;
+        let monthlyCosts = {}; // Armazena FIXO e VARIÁVEL
+        let data = {}; // Armazena dados diários (Faturamento, isCut)
+
+        // --- Funções de Persistência ---
+
+        function loadData() {
+            try {
+                const storedGoal = localStorage.getItem(LS_GOAL_KEY);
+                const storedCosts = localStorage.getItem(LS_COSTS_KEY);
+                const storedData = localStorage.getItem(LS_DATA_KEY);
+                
+                // Carrega Meta
+                totalGoal = storedGoal ? parseFloat(storedGoal) : 50000;
+                document.getElementById('totalGoal').value = totalGoal;
+
+                // Carrega Custos (FIXOS e VARIÁVEIS)
+                if (storedCosts) {
+                    monthlyCosts = JSON.parse(storedCosts);
+                } else {
+                    // Valores iniciais (FIXOS e VARIÁVEIS zerados)
+                    monthlyCosts = {
+                        '2025-9': { fixed: 1500, variable: 0 }, // Outubro (index 9)
+                        '2025-10': { fixed: 1600, variable: 0 }, // Novembro (index 10)
+                        '2025-11': { fixed: 2000, variable: 0 }, // Dezembro (index 11)
+                        '2025-12': { fixed: 500, variable: 0 }  // Janeiro (index 0)
+                    };
+                }
+                
+                // Atualiza inputs de Custo Fixo
+                document.getElementById('costOct').value = monthlyCosts['2025-9']?.fixed || 0;
+                document.getElementById('costNov').value = monthlyCosts['2025-10']?.fixed || 0;
+                document.getElementById('costDec').value = monthlyCosts['2025-11']?.fixed || 0;
+                document.getElementById('costJan').value = monthlyCosts['2025-12']?.fixed || 0;
+
+                // Carrega Dados Diários
+                if (storedData) {
+                    data = JSON.parse(storedData);
+                }
+                
+                initializeDataStructure(); 
+
+            } catch (e) {
+                console.error("Erro ao carregar dados do localStorage:", e);
+                initializeDataStructure();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(LS_DATA_KEY, JSON.stringify(data));
+            localStorage.setItem(LS_GOAL_KEY, totalGoal);
+            localStorage.setItem(LS_COSTS_KEY, JSON.stringify(monthlyCosts));
+        }
+
+        // --- Funções de Ajuda ---
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        function dateToId(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function getMonthKey(date) {
+            return `${date.getFullYear()}-${date.getMonth()}`; 
+        }
+        
+        // --- Lógica Principal ---
+
+        /** Garante que todos os dias do período estejam no objeto 'data'. */
+        function initializeDataStructure() {
+            const oneDay = 1000 * 60 * 60 * 24;
+            const totalIntervalDays = Math.round((endDate - startDate) / oneDay) + 1; 
+            let currentDate = new Date(startDate);
+            let newData = {};
+
+            for (let i = 0; i < totalIntervalDays; i++) {
+                const dateStr = dateToId(currentDate);
+                
+                // Manteve a estrutura antiga do dia, removendo o custoVariavel que agora é mensal.
+                newData[dateStr] = data[dateStr] || {
+                    faturamento: 0,
+                    isCut: (currentDate.getDay() === 0), 
+                    isWeekend: (currentDate.getDay() === 0 || currentDate.getDay() === 6),
+                    metaSugerida: 0
+                };
+                // Limpeza: remove campo antigo de custoVariavel se existir
+                if (newData[dateStr].custoVariavel !== undefined) {
+                     delete newData[dateStr].custoVariavel;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            data = newData;
+        }
+
+        /** Recalcula a meta diária restante para todos os dias futuros. */
+        function recalculateGoals() {
+            let totalFaturado = 0;
+            let totalCusto = 0; // Soma Custo Fixo + Custo Variável
+            let totalDaysToWork = 0;
+            const today = new Date();
+            const todayStr = dateToId(today);
+
+            // 1. Somar Custos FIXOS e VARIÁVEIS Totais
+            for (const monthKey in monthlyCosts) {
+                const costs = monthlyCosts[monthKey];
+                totalCusto += (costs.fixed || 0) + (costs.variable || 0);
+            }
+
+            // 2. Calcular Faturado Acumulado e Dias Úteis Restantes
+            let sortedDates = Object.keys(data).sort();
+            
+            for (const dateStr of sortedDates) {
+                const day = data[dateStr];
+                
+                // Acumula faturamento
+                totalFaturado += day.faturamento;
+
+                // Conta dias úteis restantes (a partir de hoje, não cortados)
+                if (dateStr >= todayStr && !day.isCut) {
+                    totalDaysToWork++;
+                }
+            }
+
+            // 3. Calcular a 'Meta Bruta' (Faturamento TOTAL necessário para atingir o lucro líquido)
+            // Meta Bruta = Meta Líquida Total + Total de Custos (Fixo + Variável)
+            let metaBrutaTotal = totalGoal + totalCusto;
+            
+            // 4. Calcular o 'Faturamento Necessário' que falta 
+            let faturamentoRestante = metaBrutaTotal - totalFaturado;
+
+            // 5. Atualizar resumo
+            document.getElementById('displayAdjustedGoal').textContent = formatCurrency(totalGoal);
+            document.getElementById('displayFaturado').textContent = formatCurrency(totalFaturado);
+            document.getElementById('displayRestante').textContent = formatCurrency(faturamentoRestante);
+
+            // 6. Recalcular meta diária sugerida (Recálculo dinâmico)
+            let metaPorDia = 0;
+            if (totalDaysToWork > 0 && faturamentoRestante > 0) {
+                metaPorDia = faturamentoRestante / totalDaysToWork;
+            }
+
+            for (const dateStr of sortedDates) {
+                const day = data[dateStr];
+                
+                if (dateStr >= todayStr) {
+                    if (!day.isCut) {
+                        day.metaSugerida = metaPorDia;
+                    } else {
+                        day.metaSugerida = 0; 
+                    }
+                } else {
+                    day.metaSugerida = day.faturamento;
+                }
+            }
+
+            // 7. Salvar e Renderizar
+            saveData();
+            renderCalendar();
+        }
+        
+        /** Renderiza o calendário completo na tela. */
+        function renderCalendar() {
+            const container = document.getElementById('calendarContainer');
+            container.innerHTML = '';
+            
+            let currentDate = new Date(startDate);
+            const todayStr = dateToId(new Date());
+            let monthData = {};
+            
+            // Agrupar dados por mês
+            while (currentDate <= endDate) {
+                const monthKey = getMonthKey(currentDate);
+                if (!monthData[monthKey]) {
+                    monthData[monthKey] = [];
+                }
+                monthData[monthKey].push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Renderizar cada mês
+            for (const monthKey in monthData) {
+                const monthDates = monthData[monthKey];
+                const firstDayOfMonth = monthDates[0];
+                const monthName = firstDayOfMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                
+                let monthHtml = `
+                    <div class="month-view">
+                        <div class="month-header">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</div>
+                        <div class="calendar-grid">
+                            ${dayNames.map(name => `<div class="day-header">${name}</div>`).join('')}
+                `;
+                
+                // Espaços em branco para alinhar
+                const startDayOfWeek = firstDayOfMonth.getDay();
+                for (let i = 0; i < startDayOfWeek; i++) {
+                    monthHtml += `<div class="day-cell" style="border: none; background-color: transparent; min-height: 20px; cursor: default;"></div>`;
+                }
+                
+                // Dias do mês
+                monthDates.forEach(date => {
+                    const dateStr = dateToId(date);
+                    const dayData = data[dateStr];
+                    
+                    let classes = 'day-cell';
+                    if (dayData.isWeekend) classes += ' weekend';
+                    if (dayData.isCut) classes += ' cut-day';
+                    if (dateStr < todayStr) classes += ' passed';
+                    
+                    monthHtml += `
+                        <div class="${classes}" data-date="${dateStr}" onclick="openModal('${dateStr}')">
+                            <span class="day-num">${date.getDate()}</span>
+                            <span class="faturamento-liquido">Fat.: ${formatCurrency(dayData.faturamento)}</span>
+                            <span class="meta-sugerida">Meta: ${formatCurrency(dayData.metaSugerida)}</span>
+                            
+                            <div class="cut-day-toggle" onclick="event.stopPropagation();">
+                                <label>
+                                    <input type="checkbox" ${dayData.isCut ? 'checked' : ''} onchange="toggleCutDay('${dateStr}')">
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                monthHtml += `
+                        </div>
+                    </div>
+                `;
+
+                // Seção de Custos Fixos e Variáveis
+                const fixedCost = monthlyCosts[monthKey]?.fixed || 0;
+                const variableCost = monthlyCosts[monthKey]?.variable || 0; 
+                
+                // CORRETO: Total de custos do mês (Fixo + Variável)
+                const totalCost = fixedCost + variableCost;
+
+                monthHtml += `
+                    <div class="fixed-cost-section">
+                        <h3>Custo Fixo de ${monthName}</h3>
+                        <p>Valor: <strong style="color: #ff9800;">${formatCurrency(fixedCost)}</strong></p>
+                    </div>
+                    <div class="variable-cost-section">
+                        <h3>Custo Variável de ${monthName}</h3>
+                        <div class="form-group">
+                            <label for="varCost-${monthKey}">Adicionar Custo Variável (R$):</label>
+                            <input type="number" id="varCost-${monthKey}" 
+                                value="${variableCost}"
+                                min="0" step="10">
+                        </div>
+                        <button onclick="saveVariableCost('${monthKey}')">Atualizar Custo</button>
+                        <p style="font-weight: bold; margin-top: 10px;">Total de Custos no Mês: ${formatCurrency(totalCost)}</p>
+                    </div>
+                `;
+
+                container.innerHTML += monthHtml;
+            }
+        }
+        
+        // --- Funções de Interação ---
+
+        function updateGoal() {
+            totalGoal = parseFloat(document.getElementById('totalGoal').value) || 0;
+            
+            // Salva os custos fixos mensais
+            monthlyCosts['2025-9'] = monthlyCosts['2025-9'] || { fixed: 0, variable: 0 };
+            monthlyCosts['2025-10'] = monthlyCosts['2025-10'] || { fixed: 0, variable: 0 };
+            monthlyCosts['2025-11'] = monthlyCosts['2025-11'] || { fixed: 0, variable: 0 };
+            monthlyCosts['2025-12'] = monthlyCosts['2025-12'] || { fixed: 0, variable: 0 };
+
+            monthlyCosts['2025-9'].fixed = parseFloat(document.getElementById('costOct').value) || 0;
+            monthlyCosts['2025-10'].fixed = parseFloat(document.getElementById('costNov').value) || 0;
+            monthlyCosts['2025-11'].fixed = parseFloat(document.getElementById('costDec').value) || 0;
+            monthlyCosts['2025-12'].fixed = parseFloat(document.getElementById('costJan').value) || 0;
+
+            recalculateGoals();
+        }
+
+        function openModal(dateStr) {
+            currentDayId = dateStr;
+            const dayData = data[dateStr];
+            document.getElementById('modalDateDisplay').textContent = dateStr;
+            document.getElementById('faturamentoInput').value = dayData.faturamento || '';
+            document.getElementById('faturamentoModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('faturamentoModal').style.display = 'none';
+            currentDayId = null;
+        }
+
+        function saveFaturamento() {
+            if (currentDayId) {
+                const faturamento = parseFloat(document.getElementById('faturamentoInput').value) || 0;
+                data[currentDayId].faturamento = faturamento;
+                closeModal();
+                recalculateGoals();
+            }
+        }
+
+        function toggleCutDay(dateStr) {
+            data[dateStr].isCut = !data[dateStr].isCut;
+            recalculateGoals();
+        }
+
+        /** Salva o Custo Variável para o mês específico (monthKey) e recalcula. */
+        function saveVariableCost(monthKey) {
+            // monthKey é a chave do mês (ex: '2025-9')
+            const inputId = `varCost-${monthKey}`;
+            const custoVariavel = parseFloat(document.getElementById(inputId).value) || 0;
+            
+            // Garante que a estrutura do mês existe
+            monthlyCosts[monthKey] = monthlyCosts[monthKey] || { fixed: 0, variable: 0 };
+
+            // Salva o custo variável no objeto do mês
+            monthlyCosts[monthKey].variable = custoVariavel;
+
+            recalculateGoals();
+        }
+
+        // --- Inicialização ---
+        window.onload = () => {
+            loadData(); 
+            // O updateGoal inicializa a estrutura de custos fixos e variáveis
+            updateGoal();
+        };
+    </script>
+
+</body>
+</html>
